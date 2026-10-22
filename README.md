@@ -1,6 +1,5 @@
 # OCI Image Format Specification
 
-![GitHub Actions for Docs and Linting](https://img.shields.io/github/actions/workflow/status/opencontainers/image-spec/docs-and-linting.yml?branch=main&label=GHA%20docs%20and%20linting)
 ![License](https://img.shields.io/github/license/opencontainers/image-spec)
 [![Go Reference](https://pkg.go.dev/badge/github.com/opencontainers/image-spec.svg)](https://pkg.go.dev/github.com/opencontainers/image-spec)
 
@@ -16,12 +15,11 @@ Additional documentation about how this group operates:
 - [Code of Conduct][code-of-conduct]
 - [Roadmap](#roadmap)
 - [Releases](RELEASES.md)
-- [Project Documentation](project.md)
 
 ## Running an OCI Image
 
 The OCI Image Format partner project is the [OCI Runtime Spec project](https://github.com/opencontainers/runtime-spec).
-The Runtime Specification outlines how to run a "[filesystem bundle](https://github.com/opencontainers/runtime-spec/blob/master/bundle.md)" that is unpacked on disk.
+The Runtime Specification outlines how to run a "[filesystem bundle](https://github.com/opencontainers/runtime-spec/blob/main/bundle.md)" that is unpacked on disk.
 At a high-level an OCI implementation would download an OCI Image then unpack that image into an OCI Runtime filesystem bundle.
 At this point the OCI Runtime Bundle would be run by an OCI Runtime.
 
@@ -76,10 +74,6 @@ You can also find links to meeting agendas and minutes for all prior meetings.
 ### Mailing List
 
 You can subscribe and join the mailing list on [Google Groups](https://groups.google.com/a/opencontainers.org/forum/#!forum/dev).
-
-### IRC
-
-OCI discussion happens on #opencontainers on Freenode ([logs][irc-logs]).
 
 ### Markdown style
 
@@ -159,4 +153,3 @@ Read more on [How to Write a Git Commit Message](https://chris.beams.io/posts/gi
 8. When possible, one keyword to scope the change in the subject (i.e. "README: ...", "runtime: ...")
 
 [code-of-conduct]: https://github.com/opencontainers/org/blob/master/CODE_OF_CONDUCT.md
-[irc-logs]: http://ircbot.wl.linuxfoundation.org/eavesdrop/%23opencontainers/

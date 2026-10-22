@@ -1,40 +1,50 @@
 name: Render and Lint Documentation
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
-    branches_ignore: []
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # current Go releases plus the version in the go.mod are tested
-        go: ['1.18', '1.21', '1.22']
-
-    env:
-      RELEASE_GO_VER: "1.22"
+        # Current Go releases plus the versions in **/go.mod are tested.
+        # See also BUILD_SPEC_MODULE_ONLY below.
+        go: ['go.mod', 'schema/go.mod', 'oldstable', 'stable']
+        # https://github.com/actions/setup-go/tree/v5#getting-go-version-from-the-gomod-file
+        # https://github.com/actions/setup-go/tree/v5#using-stableoldstable-aliases
 
     name: Documentation and Linting
     steps:
 
       - uses: actions/checkout@v4
-        with:
-          path: go/src/github.com/opencontainers/image-spec
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go }}
+          go-version: ${{ !endsWith(matrix.go, 'go.mod') && matrix.go || null }}
+          go-version-file: ${{ endsWith(matrix.go, 'go.mod') && matrix.go || null }}
+          cache-dependency-path: ./**/go.sum
 
       - name: Render and Lint
         env:
-          GOPATH: /home/runner/work/image-spec/image-spec/go
           # do not automatically upgrade go to a different version: https://go.dev/doc/toolchain
           GOTOOLCHAIN: local
+          BUILD_SPEC_MODULE_ONLY: ${{ matrix.go == 'go.mod' }}
         run: |
-          export PATH=$GOPATH/bin:$PATH
-          cd go/src/github.com/opencontainers/image-spec
+          export PATH="$(go env GOPATH)/bin:$PATH"
           make install.tools
+          go work init . schema
           go get -t -d ./...
           ls ../
           make
@@ -46,7 +56,7 @@ jobs:
 
       - name: documentation artifacts
         uses: actions/upload-artifact@v4
-        if: matrix.go == env.RELEASE_GO_VER
+        if: matrix.go == 'stable'
         with:
           name: oci-docs
-          path: go/src/github.com/opencontainers/image-spec/output
+          path: output

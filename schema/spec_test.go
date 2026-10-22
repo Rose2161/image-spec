@@ -1,4 +1,4 @@
-// Copyright 2016 The Linux Foundation
+// Copyright the Open Container Initiative Contributors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	"github.com/opencontainers/image-spec/schema"
-	"github.com/russross/blackfriday"
+	"github.com/russross/blackfriday/v2"
 )
 
 var (
@@ -106,27 +106,11 @@ func validate(t *testing.T, name string) {
 		err = schema.Validator(example.Mediatype).Validate(strings.NewReader(example.Body))
 		if err == nil {
 			printFields(t, "ok", example.Mediatype, example.Title)
-			t.Log(example.Body, "---")
-			continue
-		}
-
-		var errs []error
-		var verr schema.ValidationError
-		if errors.As(err, &verr) {
-			errs = verr.Errs
 		} else {
 			printFields(t, "error", example.Mediatype, example.Title, err)
 			t.Error(err)
-			t.Log(example.Body, "---")
-			continue
 		}
-
-		for _, err := range errs {
-			printFields(t, "invalid", example.Mediatype, example.Title)
-			t.Error(err)
-			fmt.Println(example.Body, "---")
-			continue
-		}
+		t.Log(example.Body, "---")
 	}
 }
 
@@ -136,9 +120,12 @@ type renderer struct {
 	fn func(text []byte, lang string)
 }
 
-func (r *renderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
-	r.fn(text, lang)
-	r.Renderer.BlockCode(out, text, lang)
+func (r *renderer) RenderNode(w io.Writer, node *blackfriday.Node, entering bool) blackfriday.WalkStatus {
+	if node.Type == blackfriday.CodeBlock {
+		lang := bytes.TrimRight(node.Info, "\t ")
+		r.fn(node.Literal, string(lang))
+	}
+	return r.Renderer.RenderNode(w, node, entering)
 }
 
 type example struct {
@@ -190,7 +177,7 @@ func extractExamples(rd io.Reader) ([]example, error) {
 
 	var examples []example
 	renderer := &renderer{
-		Renderer: blackfriday.HtmlRenderer(0, "test test", ""),
+		Renderer: blackfriday.NewHTMLRenderer(blackfriday.HTMLRendererParameters{}),
 		fn: func(text []byte, lang string) {
 			examples = append(examples, parseExample(lang, string(text)))
 		},
@@ -200,9 +187,9 @@ func extractExamples(rd io.Reader) ([]example, error) {
 	// the side-effect of calling back for each code block.
 	// TODO(stevvooe): Consider just parsing these with a scanner. It will be
 	// faster and we can retain file, line no.
-	blackfriday.MarkdownOptions(p, renderer, blackfriday.Options{
-		Extensions: blackfriday.EXTENSION_FENCED_CODE,
-	})
+	_ = blackfriday.Run(p,
+		blackfriday.WithRenderer(renderer),
+		blackfriday.WithExtensions(blackfriday.FencedCode))
 
 	return examples, nil
 }

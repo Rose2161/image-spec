@@ -9,12 +9,12 @@ This section defines the `application/vnd.oci.image.layer.v1.tar`, `application/
 ## `+gzip` Media Types
 
 - The media type `application/vnd.oci.image.layer.v1.tar+gzip` represents an `application/vnd.oci.image.layer.v1.tar` payload which has been compressed with [gzip][rfc1952_2].
-- The media type `application/vnd.oci.image.layer.nondistributable.v1.tar+gzip` represents an `application/vnd.oci.image.layer.nondistributable.v1.tar` payload which has been compressed with [gzip][rfc1952_2].
+- The media type `application/vnd.oci.image.layer.nondistributable.v1.tar+gzip` represents an `application/vnd.oci.image.layer.nondistributable.v1.tar` payload ([deprecation notice](#non-distributable-layers)) which has been compressed with [gzip][rfc1952_2].
 
 ## `+zstd` Media Types
 
 - The media type `application/vnd.oci.image.layer.v1.tar+zstd` represents an `application/vnd.oci.image.layer.v1.tar` payload which has been compressed with [zstd][rfc8478].
-- The media type `application/vnd.oci.image.layer.nondistributable.v1.tar+zstd` represents an `application/vnd.oci.image.layer.nondistributable.v1.tar` payload which has been compressed with [zstd][rfc8478].
+- The media type `application/vnd.oci.image.layer.nondistributable.v1.tar+zstd` represents an `application/vnd.oci.image.layer.nondistributable.v1.tar` payload ([deprecation notice](#non-distributable-layers)) which has been compressed with [zstd][rfc8478].
 
 ## Distributable Format
 
@@ -51,9 +51,9 @@ Where supported, MUST include file attributes for Additions and Modifications in
 
 - Modification Time (`mtime`)
 - User ID (`uid`)
-  - User Name (`uname`) *secondary to `uid`*
+  - User Name (`uname`) should be ignored on platforms that support User ID (`uid`)
 - Group ID (`gid`)
-  - Group Name (`gname`) *secondary to `gid`*
+  - Group Name (`gname`) should be ignored on platforms that support Group ID (`gid`)
 - Mode (`mode`)
 - Extended Attributes (`xattrs`)
 - Symlink reference (`linkname` + symbolic link type)
@@ -69,6 +69,8 @@ Where supported, MUST include file attributes for Additions and Modifications in
 - Non-directory files are considered "hardlinked" when their link count is greater than 1.
 - Hardlinked files are on a same device (i.e. comparing Major:Minor pair) and have the same inode.
 - The corresponding files that share the link with the > 1 linkcount may be outside the directory that the changeset is being produced from, in which case the `linkname` is not recorded in the changeset.
+- Union filesystem implementations may have limited or no support for hardlinks, particularly when a change is made to a hardlinked file or a hardlink is created to a file in a lower filesystem. (See the [overlay specification](https://docs.kernel.org/filesystems/overlayfs.html#index) for more details.)
+- Extracting a layer with hardlink references to files outside of the layer may fail.
 - Hardlinks are stored in a tar archive with type of a `1` char, per the [GNU Basic Tar Format][gnu-tar-standard] and [libarchive tar(5)][libarchive-tar].
 - While approaches to deriving new or changed hardlinks may vary, a possible approach is:
 
@@ -95,8 +97,7 @@ With this approach, the link map and links names of a directory could be compare
 
 #### Platform-specific attributes
 
-Implementations on Windows MUST support these additional attributes, encoded in [PAX vendor
-extensions](https://github.com/libarchive/libarchive/wiki/ManPageTar5#pax-interchange-format) as follows:
+Implementations on Windows MUST support these additional attributes, encoded in [PAX vendor extensions](https://github.com/libarchive/libarchive/wiki/ManPageTar5#pax-interchange-format) as follows:
 
 - [Windows file attributes](https://msdn.microsoft.com/en-us/library/windows/desktop/gg258117(v=vs.85).aspx) (`MSWINDOWS.fileattr`)
 - [Security descriptor](https://msdn.microsoft.com/en-us/library/cc230366.aspx) (`MSWINDOWS.rawsd`): base64-encoded self-relative binary security descriptor
@@ -149,7 +150,7 @@ Create a new directory and initialize it with a copy or snapshot of the prior ro
 Example commands that can preserve [file attributes](#file-attributes) to make this copy are:
 
 - [cp(1)](https://linux.die.net/man/1/cp): `cp -a rootfs-c9d-v1/ rootfs-c9d-v1.s1/`
-- [rsync(1)](https://linux.die.net/man/1/rsync):  `rsync -aHAX rootfs-c9d-v1/ rootfs-c9d-v1.s1/`
+- [rsync(1)](https://linux.die.net/man/1/rsync): `rsync -aHAX rootfs-c9d-v1/ rootfs-c9d-v1.s1/`
 - [tar(1)](https://linux.die.net/man/1/tar): `mkdir rootfs-c9d-v1.s1 && tar --acls --xattrs -C rootfs-c9d-v1/ -c . | tar -C rootfs-c9d-v1.s1/ --acls --xattrs -x` (including `--selinux` where supported)
 
 Any [changes](#change-types) to the snapshot MUST NOT change or affect the directory it was copied from.
@@ -157,7 +158,7 @@ Any [changes](#change-types) to the snapshot MUST NOT change or affect the direc
 For example `rootfs-c9d-v1.s1` is an identical snapshot of `rootfs-c9d-v1`.
 In this way `rootfs-c9d-v1.s1` is prepared for updates and alterations.
 
-**Implementor's Note**: *a copy-on-write or union filesystem can efficiently make directory snapshots*
+**Implementor's Note**: _a copy-on-write or union filesystem can efficiently make directory snapshots_
 
 Initial layout of the snapshot:
 
@@ -244,6 +245,7 @@ In all other cases, the implementation MUST do the semantic equivalent of the fo
 
 - A whiteout file is an empty file with a special filename that signifies a path should be deleted.
 - A whiteout filename consists of the prefix `.wh.` plus the basename of the path to be deleted.
+- A `.wh.` file, without a basename to delete, is invalid and implementations SHOULD return an error when encountering such an entry.
 - As files prefixed with `.wh.` are special whiteout markers, it is not possible to create a filesystem which has a file or directory with a name beginning with `.wh.`.
 - Once a whiteout is applied, the whiteout itself MUST also be hidden.
 - Whiteout files MUST only apply to resources in lower/parent layers.
@@ -252,32 +254,22 @@ In all other cases, the implementation MUST do the semantic equivalent of the fo
 The following is a base layer with several resources:
 
 ```text
-a/
-a/b/
-a/b/c/
-a/b/c/bar
+file1
+a/file2
+b/
+c/file3
 ```
 
-When the next layer is created, the original `a/b` directory is deleted and recreated with `a/b/c/foo`:
+If we then delete `file1`, `file2`, and `b/`, while leaving `file3` and adding `file4`, the next layer looks like:
 
 ```text
-a/
-a/.wh..wh..opq
-a/b/
-a/b/c/
-a/b/c/foo
+.wh.file1
+a/.wh.file2
+.wh.b
+file4
 ```
 
-When processing the second layer, `a/.wh..wh..opq` is applied first, before creating the new version of `a/b`, regardless of the ordering in which the whiteout file was encountered.
-For example, the following layer is equivalent to the layer above:
-
-```text
-a/
-a/b/
-a/b/c/
-a/b/c/foo
-a/.wh..wh..opq
-```
+Note that regardless of the path being deleted, the whiteout file is a regular file in the archive.
 
 Implementations SHOULD generate layers such that the whiteout files appear before sibling directory entries.
 
@@ -322,17 +314,48 @@ Note that this opaque file will apply to _all_ children, including sub-directori
 
 Implementations SHOULD generate layers using _explicit whiteout_ files, but MUST accept both.
 
+As another example, consider the following base layer:
+
+```text
+a/
+a/b/
+a/b/c/
+a/b/c/bar
+```
+
+When the next layer is created, the original `a/b` directory is deleted and recreated with `a/b/c/foo`:
+
+```text
+a/
+a/.wh..wh..opq
+a/b/
+a/b/c/
+a/b/c/foo
+```
+
+When processing the second layer, `a/.wh..wh..opq` is applied first, before creating the new version of `a/b`, regardless of the ordering in which the whiteout file was encountered.
+For example, the following layer is equivalent to the layer above:
+
+```text
+a/
+a/b/
+a/b/c/
+a/b/c/foo
+a/.wh..wh..opq
+```
+
 Any given image is likely to be composed of several of these Image Filesystem Changeset tar archives.
 
 ## Non-Distributable Layers
 
 > **NOTE**: Non-distributable layers are deprecated, and not recommended for future use.
 > Implementations SHOULD NOT produce new non-distributable layers.
+> Implementations are expected to support preexisting images with non-distributable layers.
 
 Due to legal requirements, certain layers may not be regularly distributable.
 Such "non-distributable" layers are typically downloaded directly from a distributor but never uploaded.
 
-Non-distributable layers SHOULD be tagged with an alternative mediatype of `application/vnd.oci.image.layer.nondistributable.v1.tar`.
+Non-distributable layers SHOULD be tagged with an alternative mediatype of `application/vnd.oci.image.layer.nondistributable.v1.tar`, `application/vnd.oci.image.layer.nondistributable.v1.tar+gzip`, or `application/vnd.oci.image.layer.nondistributable.v1.tar+zstd`.
 Implementations SHOULD NOT upload layers tagged with this media type; however, such a media type SHOULD NOT affect whether an implementation downloads the layer.
 
 [Descriptors](descriptor.md) referencing non-distributable layers MAY include `urls` for downloading these layers directly; however, the presence of the `urls` field SHOULD NOT be used to determine whether or not a layer is non-distributable.

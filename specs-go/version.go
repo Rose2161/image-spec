@@ -1,4 +1,4 @@
-// Copyright 2016 The Linux Foundation
+// Copyright the Open Container Initiative Contributors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ const (
 	// VersionMinor is for functionality in a backwards-compatible manner
 	VersionMinor = 1
 	// VersionPatch is for backwards-compatible bug fixes
-	VersionPatch = 0
+	VersionPatch = 1
 
 	// VersionDev indicates development branch. Releases will be empty string.
 	VersionDev = "+dev"

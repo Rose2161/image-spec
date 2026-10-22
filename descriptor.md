@@ -7,6 +7,7 @@
   Optionally, it includes the type of artifact it is describing.
 - Descriptors SHOULD be embedded in other formats to securely reference external content.
 - Other formats SHOULD use descriptors to securely reference external content.
+- When other formats contain multiple descriptors, unless otherwise specified, those descriptors are independent of each other, allowing fields like the `mediaType` and the algorithm for the `digest` to vary within that external content.
 
 This section defines the `application/vnd.oci.descriptor.v1+json` [media type](media-types.md).
 
@@ -33,6 +34,7 @@ The following fields contain the primary properties that constitute a Descriptor
   This REQUIRED property specifies the size, in bytes, of the raw content.
   This property exists so that a client will have an expected size for the content before processing.
   If the length of the retrieved content does not match the specified length, the content SHOULD NOT be trusted.
+  The size MUST NOT be negative.
 
 - **`urls`** *array of strings*
 
@@ -94,6 +96,7 @@ Some example digest strings include the following:
 | `sha512:401b09eab3c013d4ca54922bb802bec8fd5318192b0a75f201d8b372742...`   | [SHA-512](#sha-512)         | Yes        |
 | `multihash+base58:QmRZxt2b1FVZPNqd8hsiykDL3TdBDeTSPX9Kv46HmX4Gx8`         | Multihash                   | No         |
 | `sha256+b64u:LCa0a2j_xo_5m0U8HTBBNBNCLXBkg7-g-YpeiGJm564`                 | SHA-256 with urlsafe base64 | No         |
+| `blake3:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b` | [BLAKE3](#blake3)           | Yes        |
 
 Please see [Registered Algorithms](#registered-algorithms) for a list of registered algorithms.
 
@@ -141,6 +144,7 @@ The following algorithm identifiers are currently defined by this specification:
 |----------------------|---------------------|
 | `sha256`             | [SHA-256](#sha-256) |
 | `sha512`             | [SHA-512](#sha-512) |
+| `blake3`             | [BLAKE3](#blake3)   |
 
 If a useful algorithm is not included in the above table, it SHOULD be submitted to this specification for registration.
 
@@ -158,6 +162,15 @@ Note that `[A-F]` MUST NOT be used here.
 Implementations MAY implement SHA-512 digest verification for use in descriptors.
 
 When the _algorithm identifier_ is `sha512`, the _encoded_ portion MUST match `/[a-f0-9]{128}/`.
+Note that `[A-F]` MUST NOT be used here.
+
+#### BLAKE3
+
+[BLAKE3][blake3] is a high performance, highly parallelizable, collision-resistant hash function which [is more performant][blake3-vs-sha2] than [SHA-256][rfc4634-s4.1].
+The hash output length MUST be 256 bits.
+Implementations MAY implement BLAKE3 digest verification for use in descriptors.
+
+When the _algorithm identifier_ is `blake3`, the _encoded_ portion MUST match `/[a-f0-9]{64}/`.
 Note that `[A-F]` MUST NOT be used here.
 
 ## Embedded Content
@@ -219,3 +232,5 @@ In the following example, the descriptor indicates the type of artifact it is re
 [rfc7230-s2.7]: https://tools.ietf.org/html/rfc7230#section-2.7
 [sha256-vs-sha512]: https://groups.google.com/a/opencontainers.org/forum/#!topic/dev/hsMw7cAwrZE
 [iana]: https://www.iana.org/assignments/media-types/media-types.xhtml
+[blake3]: https://github.com/C2SP/C2SP/blob/BLAKE3/v1.0.0/BLAKE3.md
+[blake3-vs-sha2]: https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf

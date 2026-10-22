@@ -84,9 +84,10 @@ Most importantly, we can easily see that `ChainID(C) != ChainID(A|B|C)`, otherwi
 
 ### ImageID
 
-Each image's ID is given by the SHA256 hash of its [configuration JSON](#image-json).
-It is represented as a hexadecimal encoding of 256 bits, e.g., `sha256:a9561eb1b190625c9adb5a9513e72c4dedafc1cb2d4c5236c9a6957ec7dfd5a9`.
-Since the [configuration JSON](#image-json) that gets hashed references hashes of each layer in the image, this formulation of the ImageID makes images content-addressable.
+*Implementers note*: Previously, the ImageID has been documented as the "SHA256 hash of its [configuration JSON](#image-json)".
+With the packaging of artifacts, it is possible that this value is no longer unique.
+In addition, more tooling supports managing OCI content by the the digest of the [index](image-index.md) or [manifest](manifest.md).
+As a result, implementations have diverged from the original ImageID definition and the specification no longer defines how implementations create this value.
 
 ## Properties
 
@@ -131,7 +132,7 @@ Note: Any OPTIONAL field MAY also be set to null, which is equivalent to being a
 - **config** _object_, OPTIONAL
 
   The execution parameters which SHOULD be used as a base when running a container using the image.
-  This field can be `null`, in which case any execution parameters should be specified at creation of the container.
+  If the `config` object is omitted, any execution parameters should be specified at creation of the container.
 
   - **User** _string_, OPTIONAL
 
@@ -177,12 +178,12 @@ Note: Any OPTIONAL field MAY also be set to null, which is equivalent to being a
 
   - **Labels** _object_, OPTIONAL
 
-    The field contains arbitrary metadata for the container.
+    This field contains arbitrary metadata for the container.
     This property MUST use the [annotation rules](annotations.md#rules).
 
   - **StopSignal** _string_, OPTIONAL
 
-    The field contains the system call signal that will be sent to the container to exit. The signal can be a signal name in the format `SIGNAME`, for instance `SIGKILL` or `SIGRTMIN+3`.
+    This field contains the system call signal that will be sent to the container to exit. The signal can be a signal name in the format `SIGNAME`, for instance `SIGKILL` or `SIGRTMIN+3`.
 
   - **ArgsEscaped** _boolean_, OPTIONAL
 

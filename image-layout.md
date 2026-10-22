@@ -3,11 +3,11 @@
 - The OCI Image Layout is the directory structure for OCI content-addressable blobs and [location-addressable](https://en.wikipedia.org/wiki/Content-addressable_storage#Content-addressed_vs._location-addressed) references (refs).
 - This layout MAY be used in a variety of different transport mechanisms: archive formats (e.g. tar, zip), shared filesystem environments (e.g. nfs), or networked file fetching (e.g. http, ftp, rsync).
 
-Given an image layout and a ref, a tool can create an [OCI Runtime Specification bundle](https://github.com/opencontainers/runtime-spec/blob/v1.0.0/bundle.md) by:
+Given an image layout and a ref, a tool can create an [OCI Runtime Specification bundle](https://github.com/opencontainers/runtime-spec/blob/main/bundle.md) by:
 
 - Following the ref to find a [manifest](manifest.md#image-manifest), possibly via an [image index](image-index.md)
-- [Applying the filesystem layers](layer.md#applying) in the specified order
-- Converting the [image configuration](config.md) into an [OCI Runtime Specification `config.json`](https://github.com/opencontainers/runtime-spec/blob/v1.0.0/config.md)
+- [Applying the filesystem layers](layer.md#applying-changesets) in the specified order
+- Converting the [image configuration](config.md) into an [OCI Runtime Specification `config.json`](https://github.com/opencontainers/runtime-spec/blob/main/config.md)
 
 ## Content
 
@@ -28,6 +28,11 @@ The image layout is as follows:
   - It MUST exist
   - It MUST be an [image index](image-index.md) JSON object.
   - See [index.json](#indexjson-file) section
+
+**Implementor's Note:**
+For extensibility and future expansion, additional files may be included in the directory.
+Implementations should not error when encountering unknown files.
+A common usage includes the `manifest.json` file associated with a backwards compatible `docker save` format.
 
 ## Example Layout
 
